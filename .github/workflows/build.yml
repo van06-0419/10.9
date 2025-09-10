@@ -1,5 +1,4 @@
 name: 跨平台构建
-
 on:
   push:
     branches: [ master ]
@@ -12,34 +11,49 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
+      # 某一系统构建失败不影响另一系统（可选）
+      fail-fast: false
+    # 整个任务超时时间（默认360分钟，可适当缩短）
+    timeout-minutes: 30
 
     steps:
     - uses: actions/checkout@v4
+      timeout-minutes: 5  # 检出代码超时时间
 
-    # 清理旧构建文件
+    # 1. 清理旧构建文件（确保环境干净）
     - name: 清理旧构建文件
       run: |
         if [ -d "build" ]; then rm -rf build; fi
         if [ -f "CMakeCache.txt" ]; then rm -f CMakeCache.txt; fi
         if [ -d "CMakeFiles" ]; then rm -rf CMakeFiles; fi
       shell: bash
+      timeout-minutes: 2
 
-    # 配置CMake，明确指定输出目录结构
-    - name: 配置CMake
-      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+    # 2. 配置CMake（增加重试，应对临时失败）
+    - name: 配置CMake（带重试）
+      uses: nick-fields/retry@v3  # 重试插件
+      with:
+        max_attempts: 3  # 最多重试3次
+        retry_wait_seconds: 10  # 每次重试间隔10秒
+        command: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+      timeout-minutes: 10  # 单次配置超时时间
 
-    # 构建项目
-    - name: 构建项目
-      run: cmake --build build --config Release
+    # 3. 构建项目（同样增加重试）
+    - name: 构建项目（带重试）
+      uses: nick-fields/retry@v3
+      with:
+        max_attempts: 2
+        retry_wait_seconds: 5
+        command: cmake --build build --config Release --parallel 2  # 并行构建（加快速度）
+      timeout-minutes: 15
 
-    # 列出构建目录文件（用于调试路径问题）
-    - name: 显示构建目录结构
-      run: |
-        echo "构建目录内容："
-        ls -R build/
+    # 4. 查看构建目录结构（调试用）
+    - name: 显示构建目录内容
+      run: ls -R build/
       shell: bash
+      timeout-minutes: 3
 
-    # 运行程序（根据系统动态调整路径）
+    # 5. 运行程序
     - name: 运行程序
       run: |
         if [ "${{ matrix.os }}" = "windows-latest" ]; then
@@ -48,3 +62,4 @@ jobs:
           build/hello_world
         fi
       shell: bash
+      timeout-minutes: 2
