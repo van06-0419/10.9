@@ -1,10 +1,10 @@
-name: Build and Test
+name: 跨平台构建
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ master ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ master ]
 
 jobs:
   build:
@@ -16,25 +16,19 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Initialize build number
+    # 关键步骤：清理可能残留的构建文件
+    - name: 清理旧构建文件
       run: |
-        if [ ! -f "build_number.txt" ]; then
-          echo "0" > build_number.txt
-        fi
-      if: matrix.os == 'ubuntu-latest'
+        if [ -d "build" ]; then rm -rf build; fi
+        if [ -f "CMakeCache.txt" ]; then rm -f CMakeCache.txt; fi
+        if [ -d "CMakeFiles" ]; then rm -rf CMakeFiles; fi
+      shell: bash
 
-    - name: Initialize build number (Windows)
-      run: |
-        if (-not (Test-Path "build_number.txt")) {
-          "0" | Out-File -FilePath "build_number.txt" -Encoding utf8
-        }
-      if: matrix.os == 'windows-latest'
+    - name: 配置CMake
+      run: cmake -B build -S .
 
-    - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -S ${{github.workspace}}
+    - name: 构建项目
+      run: cmake --build build --config Release
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config Release
-    
-    - name: Run executable
-      run: ${{ matrix.os == 'windows-latest' && '.\build\Release\hello_world.exe' || './build/hello_world' }}
+    - name: 运行程序
+      run: ${{ matrix.os == 'windows-latest' && 'build/Release/hello_world.exe' || './build/hello_world' }}
