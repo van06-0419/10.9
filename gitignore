@@ -1,0 +1,13 @@
+# 构建目录
+build/
+
+# 临时文件
+*.tmp
+*.log
+
+# 生成的版本头文件(在build目录中生成)
+/build/version.h
+
+# 可执行文件
+hello_world
+hello_world.exe

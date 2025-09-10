@@ -1,0 +1,50 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Initialize build number
+      if: ${{ !exists('build_number.txt') }}
+      run: |
+        echo 0 > build_number.txt
+      shell: bash
+
+    - name: Set up CMake
+      uses: jwlawson/actions-setup-cmake@v2
+      with:
+        cmake-version: '3.25.x'
+
+    - name: Configure CMake
+      run: |
+        mkdir -p build
+        cd build
+        cmake ..
+      shell: bash
+
+    - name: Build
+      run: |
+        cd build
+        cmake --build . --config Release
+      shell: bash
+
+    - name: Run executable
+      run: |
+        cd build
+        ${{ matrix.os == 'windows-latest' ? '.\Release\hello_world.exe' : './hello_world' }}
+      shell: bash
+      name: Run and display version
+    
