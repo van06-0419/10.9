@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # 关键步骤：清理可能残留的构建文件
+    # 清理旧构建文件
     - name: 清理旧构建文件
       run: |
         if [ -d "build" ]; then rm -rf build; fi
@@ -24,11 +24,27 @@ jobs:
         if [ -d "CMakeFiles" ]; then rm -rf CMakeFiles; fi
       shell: bash
 
+    # 配置CMake，明确指定输出目录结构
     - name: 配置CMake
-      run: cmake -B build -S .
+      run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 
+    # 构建项目
     - name: 构建项目
       run: cmake --build build --config Release
 
+    # 列出构建目录文件（用于调试路径问题）
+    - name: 显示构建目录结构
+      run: |
+        echo "构建目录内容："
+        ls -R build/
+      shell: bash
+
+    # 运行程序（根据系统动态调整路径）
     - name: 运行程序
-      run: ${{ matrix.os == 'windows-latest' && 'build/Release/hello_world.exe' || './build/hello_world' }}
+      run: |
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          build/Release/hello_world.exe
+        else
+          build/hello_world
+        fi
+      shell: bash
