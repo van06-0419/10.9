@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-    name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -18,33 +17,24 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Initialize build number
-      if: ${{ !exists('build_number.txt') }}
       run: |
-        echo 0 > build_number.txt
-      shell: bash
+        if [ ! -f "build_number.txt" ]; then
+          echo "0" > build_number.txt
+        fi
+      if: matrix.os == 'ubuntu-latest'
 
-    - name: Set up CMake
-      uses: jwlawson/actions-setup-cmake@v2
-      with:
-        cmake-version: '3.25.x'
+    - name: Initialize build number (Windows)
+      run: |
+        if (-not (Test-Path "build_number.txt")) {
+          "0" | Out-File -FilePath "build_number.txt" -Encoding utf8
+        }
+      if: matrix.os == 'windows-latest'
 
     - name: Configure CMake
-      run: |
-        mkdir -p build
-        cd build
-        cmake ..
-      shell: bash
+      run: cmake -B ${{github.workspace}}/build -S ${{github.workspace}}
 
     - name: Build
-      run: |
-        cd build
-        cmake --build . --config Release
-      shell: bash
-
-    - name: Run executable
-      run: |
-        cd build
-        ${{ matrix.os == 'windows-latest' ? '.\Release\hello_world.exe' : './hello_world' }}
-      shell: bash
-      name: Run and display version
+      run: cmake --build ${{github.workspace}}/build --config Release
     
+    - name: Run executable
+      run: ${{ matrix.os == 'windows-latest' && '.\build\Release\hello_world.exe' || './build/hello_world' }}
